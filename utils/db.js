@@ -1,28 +1,24 @@
-import MongoClient from 'mongodb';
+const { MongoClient } = require('mongodb');
+
+// const uri = 'mongodb://localhost:27017';
+// let client = new MongoClient(uri, { useUnifiedTopology: true });
 
 class DBClient {
   constructor() {
     this.host = process.env.DB_HOST || 'localhost';
-    this.port = process.env.DB_PORT || 27017;
+    this.port = process.env.DB_PORT || '27017';
     this.databaseName = process.env.DB_DATABASE || 'files_manager';
-
-    // Initialize MongoClient
-    this.url = `mongodb://${this.host}:${this.port}`;
-    this.client = new MongoClient(this.url, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
     this.db = null;
     this.connected = false;
+    this.client = new MongoClient(`mongodb://${this.host}:${this.port}`, { useUnifiedTopology: true });
     this.connect();
   }
 
   async connect() {
     try {
       await this.client.connect();
-      this.db = this.client.db('mydatabase');
+      this.db = this.client.db(this.databaseName);
       this.connected = true;
-      console.log('Connected successfully to MongoDB');
     } catch (e) {
       console.error('Error connecting to MongoDB', e);
     }
@@ -41,5 +37,4 @@ class DBClient {
   }
 }
 
-const dbClient = new DBClient();
-module.exports = dbClient;
+module.exports = new DBClient();
