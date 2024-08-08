@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
 const { ObjectId } = require('mongodb');
 const dbsUtil = require('../utils/db');
 const redisClient = require('../utils/redis');
@@ -70,11 +70,25 @@ class FilesController {
       const filePath = path.join(FOLDER_PATH, fileName);
       const fileData = Buffer.from(data, 'base64');
 
-      fs.writeFileSync(filePath, fileData);
+      try {
+        await fs.mkdir(FOLDER_PATH);
+        await fs.writeFile(filePath, fileData);
+      } catch (error) {
+        console.error(error);
+      }
+
+      // await fs.writeFile(filePath, fileData);
       file.localPath = filePath;
 
       const result = await dbsUtil.db.collection('files').insertOne(file);
-      return res.status(201).json(result.ops[0]);
+      return res.status(201).json({
+        id: result.ops[0]._id,
+        userId: result.ops[0].userId,
+        name: result.ops[0].name,
+        type: result.ops[0].type,
+        isPublic: result.ops[0].isPublic,
+        parentId: result.ops[0].parentId,
+      });
     } catch (error) {
       console.log(error);
       return res.status(501).json({ error: 'Internal server error' });
