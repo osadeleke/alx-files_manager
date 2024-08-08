@@ -44,6 +44,10 @@ class AuthController {
       }
 
       const redisKey = `auth_${token}`;
+      const userId = await redisClient.get(redisKey);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       await redisClient.del(redisKey);
 
       return res.status(204).json();
