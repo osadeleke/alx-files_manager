@@ -42,36 +42,52 @@ class FilesController {
         return res.status(400).json({ error: 'Missing data' });
       }
 
+      let parentPath = FOLDER_PATH;
       if (parentId) {
-        const parentFile = await dbsUtil.db.collection('files').findOne({ _id: ObjectId(parentId) });
+        const parentFile = await dbsUtil.db.collection('files').findOne({ _id: new ObjectId(parentId) });
         if (!parentFile) {
           return res.status(400).json({ error: 'Parent not found' });
         }
         if (parentFile.type !== 'folder') {
           return res.status(400).json({ error: 'Parent is not a folder' });
         }
+
+        parentPath = parentFile.localPath || path.join(FOLDER_PATH, parentFile._id.toString());
       }
 
       const file = {
-        userId,
+        userId: new ObjectId(userId),
         name,
         type,
         isPublic,
-        parentId: parentId || 0,
+        parentId: parentId ? new ObjectId(parentId) : 0,
         localPath: null,
       };
 
       if (type === 'folder') {
+        file.localPath = path.join(parentPath, name);
+        try {
+          await fs.mkdir(file.localPath, { recursive: true });
+        } catch (error) {
+          console.error(error);
+        }
         const result = await dbsUtil.db.collection('files').insertOne(file);
-        return res.status(201).json(result.ops[0]);
+        return res.status(201).json({
+          id: result.ops[0]._id,
+          userId: result.ops[0].userId,
+          name: result.ops[0].name,
+          type: result.ops[0].type,
+          isPublic: result.ops[0].isPublic,
+          parentId: result.ops[0].parentId,
+        });
       }
 
-      const fileName = `${Date.now()}-${uuidv4()}`;
-      const filePath = path.join(FOLDER_PATH, fileName);
+      const fileName = `${uuidv4()}`;
+      const filePath = path.join(parentPath, fileName);
       const fileData = Buffer.from(data, 'base64');
 
       try {
-        await fs.mkdir(FOLDER_PATH);
+        await fs.mkdir(parentPath, { recursive: true });
         await fs.writeFile(filePath, fileData);
       } catch (error) {
         console.error(error);
